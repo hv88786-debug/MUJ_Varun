@@ -49,12 +49,23 @@ def fetch_sensors():
         d = r.json()
         if not d:
             return None
-        sensors = {
-            "tds":         float(d.get("tds", 0)),
-            "turbidity":   float(d.get("turbidity", 0)),
+        raw_values = {
+            "tds": float(d.get("tds", 0)),
+            "turbidity": float(d.get("turbidity", 0)),
             "temperature": float(d.get("temperature", d.get("temp", 25))),
-            "salinity":    float(d.get("salinity", 0)),
-            "ph":          float(d.get("ph", 7.0)),
+            "salinity": float(d.get("salinity", 0)),
+            "ph": float(d.get("ph", 7.0)),
+        }
+        sensors = {
+            **raw_values,
+            # Safety is derived from measurements, never from a stale flag.
+            "sensor_drinkable": (
+                raw_values["tds"] <= 500
+                and raw_values["turbidity"] <= 4
+                and raw_values["salinity"] <= 0.5
+                and 6.5 <= raw_values["ph"] <= 8.5
+                and 5 <= raw_values["temperature"] <= 35
+            ),
         }
         # Optional — only present if the ESP32 has a chlorine/coliform sensor
         # or strip reader wired up. None = "not measured", never faked/assumed.
@@ -361,6 +372,10 @@ def run_prediction_once(village="Nasirabad"):
     except Exception as error:
         print(f"  [predict] Groq prediction failed; using sensor fallback: {error}")
         pred = fallback_prediction(sensors, score, flags=flags, hard_critical=hard_critical)
+    if not sensors.get("sensor_drinkable", False):
+        pred["drinkable"] = False
+        if max(pred.get(field, 0) for field in _RISK_FIELDS) == 0:
+            pred = fallback_prediction(sensors, score, flags=flags, hard_critical=hard_critical)
     pred = smooth_prediction(pred, bypass=hard_critical)
     return upload(sensors, pred, village=village)
 

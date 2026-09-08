@@ -210,9 +210,9 @@ async function fetchSensors() {
     const temp     = parseFloat(d.temperature) || 0;
     const sal      = parseFloat(d.salinity)    || 0;
     const ph       = parseFloat(d.ph)          || 7.0;
-    // drinkable comes directly from /water node (not ai_prediction)
-    const drinkableRaw = d.drinkable;
-    const waterDrinkable = drinkableRaw === true || drinkableRaw === 'true' || drinkableRaw === 1;
+    // Derive safety from the actual readings. The Firebase drinkable flag can
+    // be stale, so it must never override an exceeded sensor limit.
+    const waterDrinkable = tds <= 500 && turb <= 4 && sal <= 0.5 && ph >= 6.5 && ph <= 8.5 && temp >= 5 && temp <= 35;
 
     // Smooth noisy readings so cards, bars, charts and map values move gradually.
     const smoothed = smoothSensors({ tds, turbidity: turb, temperature: temp, salinity: sal, ph });
@@ -337,7 +337,9 @@ async function fetchAI() {
       // FIX: Firebase uses risk_level (SAFE/WARNING/CRITICAL) not severity
       const riskLevel = (data.risk_level || data.severity || 'SAFE').toLowerCase();
       const severity  = riskLevel;
-      const drinkable = data.drinkable === true || data.drinkable === 'true' || _liveSensors.drinkable === true;
+      // Sensor-derived safety is authoritative; an old AI/Firebase flag cannot
+      // make water safe while a live parameter is outside its limit.
+      const drinkable = _liveSensors.drinkable === true;
       // A safe sensor reading is authoritative for the displayed risk. This
       // prevents stale AI values from appearing after water becomes safe.
       const targetAI = {
