@@ -1,0 +1,248 @@
+/* ═══════════════════════════════════════
+   ASHA WORKER PORTAL — styles
+   Extends the shared govt design tokens already defined in varun.css
+   (--gov-blue, --gov-red, --gov-card, --gov-input, .status-pill, etc.)
+   Only ASHA-portal-specific pieces live here.
+═══════════════════════════════════════ */
+.asha-app, .asha-app * { box-sizing: border-box; }
+.asha-app { font-size: 13px; line-height: 1.5; background: var(--gov-bg); min-height: 100vh; }
+
+/* OFFLINE BAR */
+.asha-app #offline-bar{position:fixed;top:0;left:0;right:0;z-index:2000;height:0;overflow:hidden;background:linear-gradient(90deg,#7c2d12,#dc2626);color:white;display:flex;align-items:center;justify-content:space-between;padding:0 14px;font-size:11px;font-weight:700;transition:height 0.3s,padding 0.3s;}
+.asha-app #offline-bar.show{height:32px;padding:6px 14px;}
+.asha-app .sync-count{background:rgba(255,255,255,0.2);border-radius:20px;padding:2px 8px;font-family:'JetBrains Mono',monospace;font-size:10px;}
+.asha-app .sync-spinner{width:14px;height:14px;border:2px solid rgba(255,255,255,0.3);border-top-color:white;border-radius:50%;animation:asha-spin 0.8s linear infinite;display:none;}
+@keyframes asha-spin{to{transform:rotate(360deg)}}
+@keyframes asha-pulse{0%,100%{opacity:1}50%{opacity:0.4}}
+
+/* LANG TOGGLE */
+.asha-app .lang-toggle{display:flex;gap:2px;background:rgba(255,255,255,0.12);border-radius:20px;padding:3px;}
+.asha-app .lang-btn{border:none;background:transparent;color:rgba(255,255,255,0.65);font-size:10px;font-weight:700;padding:3px 7px;border-radius:15px;cursor:pointer;transition:all 0.15s;font-family:'Noto Sans',sans-serif;white-space:nowrap;}
+.asha-app .lang-btn.active{background:rgba(255,255,255,0.25);color:white;}
+
+/* HEADER (ASHA-specific bits not already in the shared .gov-topbar) */
+.asha-app .gov-topbar{padding:0 10px;height:60px;gap:8px;overflow:hidden;transition:top 0.3s;top:0;}
+.asha-app .gov-title-en{font-size:11px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.asha-app .worker-chip-gov{display:flex;align-items:center;gap:5px;background:rgba(255,255,255,0.12);border:1px solid rgba(255,255,255,0.25);border-radius:20px;padding:3px 8px;flex-shrink:0;}
+.asha-app .worker-dot-gov{width:6px;height:6px;border-radius:50%;background:#4ade80;animation:asha-pulse 1.5s infinite;}
+.asha-app .worker-name-chip{font-size:10px;font-weight:700;max-width:60px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.asha-app .worker-village-chip{font-size:9px;opacity:0.7;}
+.asha-app .ph-badge{background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.3);border-radius:4px;padding:3px 7px;font-size:9px;font-weight:700;white-space:nowrap;flex-shrink:0;color:#a7f3d0;display:flex;align-items:center;gap:4px;}
+.asha-app .ph-badge .ph-dot{width:6px;height:6px;border-radius:50%;background:#22d3ee;animation:asha-pulse 1.5s infinite;}
+.asha-app .ph-badge.unsafe{color:#fecaca;}
+
+/* NAV — BOTTOM TAB BAR (Android/iOS style) */
+.asha-app .asha-bottom-nav{
+  position:fixed;bottom:0;left:0;right:0;z-index:999;
+  display:flex;align-items:stretch;height:56px;
+  background:var(--gov-blue);
+  box-shadow:0 -2px 8px rgba(0,0,0,0.18);
+  /* safe area for phones with home bar */
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+.asha-app .asha-tab-btn{
+  flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;
+  border:none;background:transparent;cursor:pointer;
+  color:rgba(255,255,255,0.65);font-family:'Noto Sans',sans-serif;
+  font-size:9px;font-weight:600;
+  border-top:3px solid transparent;
+  transition:all 0.2s cubic-bezier(0.22,1,0.36,1);position:relative;padding:6px 0 4px;
+}
+.asha-app .asha-tab-btn:hover{color:white;background:rgba(255,255,255,0.08);}
+.asha-app .asha-tab-btn.active{color:white;border-top-color:#fbbf24;background:rgba(255,255,255,0.1);}
+.asha-app .asha-tab-icon{font-size:18px;line-height:1;display:block;}
+.asha-app .asha-tab-label{font-size:9px;font-weight:700;white-space:nowrap;}
+.asha-app .nav-badge-gov{position:absolute;top:4px;right:calc(50% - 14px);background:var(--gov-red);color:#fff;font-size:9px;font-weight:700;padding:1px 4px;border-radius:20px;display:none;}
+.asha-app .nav-badge-gov.show{display:block;}
+
+/* SYMBOL STYLES */
+.asha-app .chip-sym{font-size:11px;font-weight:700;color:var(--gov-blue);}
+.asha-app .voice-sym{font-size:10px;color:var(--gov-red);animation:asha-pulse 1.5s infinite;}
+.asha-app .sym-weather{font-size:22px;}
+
+/* APP AREA — top=60px (header only, no nav), bottom=56px (footer nav) */
+.asha-app #app{position:fixed;top:60px;bottom:56px;left:0;right:0;overflow:hidden;transition:top 0.3s;}
+.asha-app .page{position:absolute;inset:0;overflow-y:auto;overflow-x:hidden;padding:14px 14px 20px;opacity:0;pointer-events:none;transform:translateY(10px);transition:opacity 0.35s cubic-bezier(0.22,1,0.36,1),transform 0.35s cubic-bezier(0.22,1,0.36,1);-webkit-overflow-scrolling:touch;}
+.asha-app .page.active{opacity:1;pointer-events:all;transform:translateY(0);}
+
+
+/* QUEUE BANNER */
+.asha-app .queue-banner{background:linear-gradient(90deg,#fef3c7,#fde68a);border:1px solid #fcd34d;border-left:3px solid var(--gov-yellow);border-radius:6px;padding:10px 12px;margin-bottom:12px;display:none;align-items:center;gap:10px;}
+.asha-app .queue-banner.show{display:flex;}
+.asha-app .queue-banner-text strong{display:block;font-size:11px;color:#92400e;font-weight:700;}
+.asha-app .queue-banner-text span{font-size:10px;color:#b45309;}
+.asha-app .queue-count-pill{background:#92400e;color:white;border-radius:20px;padding:2px 8px;font-size:10px;font-weight:700;font-family:'JetBrains Mono',monospace;flex-shrink:0;}
+
+/* CARDS / BREADCRUMB */
+.asha-app .breadcrumb-pg{background:white;border:1px solid var(--gov-border);border-radius:6px;padding:6px 12px;font-size:11px;color:var(--gov-gray2);display:flex;align-items:center;gap:5px;margin-bottom:12px;}
+.asha-app .bc-page{color:var(--gov-blue);font-weight:600;}
+
+/* FORMS */
+.asha-app .field{margin-bottom:10px;}
+.asha-app .gov-textarea{width:100%;padding:8px 10px;background:white;border:1px solid var(--gov-border);border-radius:4px;color:var(--gov-gray);font-family:'Noto Sans',sans-serif;font-size:13px;outline:none;resize:vertical;min-height:68px;}
+.asha-app .gov-textarea:focus{border-color:var(--gov-blue);box-shadow:0 0 0 2px rgba(26,86,160,0.12);}
+.asha-app .two-col{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+
+/* DISEASE TILES */
+.asha-app .disease-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:4px;}
+.asha-app .dtile{background:var(--gov-bg);border:1px solid var(--gov-border);border-radius:6px;padding:10px;}
+.asha-app .dtile-label{font-size:10px;font-weight:700;letter-spacing:0.4px;text-transform:uppercase;margin-bottom:6px;}
+.asha-app .dtile-label.c{color:var(--gov-red);}
+.asha-app .dtile-label.f{color:var(--gov-yellow);}
+.asha-app .dtile-label.t{color:#7c3aed;}
+.asha-app .dtile-label.o{color:var(--gov-blue);}
+.asha-app .dtile .gov-input{text-align:center;font-family:'JetBrains Mono',monospace;font-size:20px;font-weight:700;padding:6px;}
+
+/* LIVE WATER QUALITY (pH) TILE — used on Home + Dashboard */
+.asha-app .ph-tile{background:linear-gradient(135deg,#0c4a6e,#0369a1);color:white;border-radius:8px;padding:14px;margin-bottom:12px;display:flex;align-items:center;justify-content:space-between;gap:12px;}
+.asha-app .ph-tile-label{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:1px;opacity:0.7;margin-bottom:4px;}
+.asha-app .ph-tile-val{font-size:30px;font-weight:700;font-family:'JetBrains Mono',monospace;line-height:1;}
+.asha-app .ph-tile-sub{font-size:10px;opacity:0.75;margin-top:2px;}
+.asha-app .ph-tile-badge{font-size:10px;font-weight:700;padding:3px 9px;border-radius:20px;background:rgba(255,255,255,0.15);white-space:nowrap;}
+.asha-app .ph-tile-badge.unsafe{background:rgba(220,38,38,0.35);}
+.asha-app .ph-tile-bar{height:5px;background:rgba(255,255,255,0.2);border-radius:3px;margin-top:8px;overflow:hidden;}
+.asha-app .ph-tile-bar-fill{height:100%;border-radius:3px;transition:width 0.6s ease;background:#22d3ee;}
+
+/* SEVERITY */
+.asha-app .sev-options{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px;}
+.asha-app .sev-opt{border-radius:6px;padding:10px 6px;text-align:center;border:1.5px solid var(--gov-border);cursor:pointer;transition:all 0.25s cubic-bezier(0.22,1,0.36,1);background:white;}
+.asha-app .sev-opt input[type=radio]{display:none;}
+.asha-app .sev-opt-lbl{font-size:10px;font-weight:700;color:var(--gov-gray2);}
+.asha-app .sev-opt.low.chosen{border-color:var(--gov-green);background:var(--gov-grn-lt);}
+.asha-app .sev-opt.low.chosen .sev-opt-lbl{color:var(--gov-green);}
+.asha-app .sev-opt.med.chosen{border-color:var(--gov-yellow);background:var(--gov-yel-lt);}
+.asha-app .sev-opt.med.chosen .sev-opt-lbl{color:var(--gov-yellow);}
+.asha-app .sev-opt.high.chosen{border-color:var(--gov-red);background:var(--gov-red-lt);}
+.asha-app .sev-opt.high.chosen .sev-opt-lbl{color:var(--gov-red);}
+
+/* BUTTONS (success variant not in shared file) */
+.asha-app .gov-btn-success{background:var(--gov-green);color:white;}
+
+/* STAT CARDS */
+.asha-app .stat-row-gov{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;}
+.asha-app .stat-card-gov{background:white;border:1px solid var(--gov-border);border-radius:6px;padding:10px 12px;border-left:3px solid var(--gov-blue);display:flex;align-items:center;gap:8px;}
+.asha-app .stat-card-gov.red{border-left-color:var(--gov-red);}
+.asha-app .stat-card-gov.yellow{border-left-color:var(--gov-yellow);}
+.asha-app .stat-card-gov.green{border-left-color:var(--gov-green);}
+.asha-app .stat-card-gov.cyan{border-left-color:#0891b2;}
+.asha-app .stat-val-gov{font-size:20px;font-weight:700;font-family:'JetBrains Mono',monospace;line-height:1;}
+.asha-app .stat-lbl-gov{font-size:10px;color:var(--gov-gray2);margin-top:1px;}
+
+/* PILLS (ASHA's own pill wrapper; colors reuse the shared pill-safe/warn/danger palette) */
+.asha-app .gov-pill{display:inline-flex;align-items:center;gap:3px;padding:2px 7px;border-radius:10px;font-size:10px;font-weight:700;}
+.asha-app .gov-pill.pill-offline{background:#f3f4f6;color:#6b7280;border:1px solid #d1d5db;}
+
+/* TOAST */
+.asha-app .toast{position:fixed;bottom:14px;left:1rem;right:1rem;z-index:5000;padding:11px 14px;border-radius:6px;font-weight:600;font-size:13px;display:flex;align-items:center;gap:8px;opacity:0;transform:translateY(10px);pointer-events:none;transition:all 0.3s;box-shadow:0 4px 16px rgba(0,0,0,0.2);}
+.asha-app .toast.show{opacity:1;transform:translateY(0);}
+.asha-app .toast.ok{background:var(--gov-green);color:white;}
+.asha-app .toast.err{background:var(--gov-red);color:white;}
+.asha-app .toast.warn{background:var(--gov-yellow);color:white;}
+.asha-app .toast.info{background:var(--gov-blue);color:white;}
+
+/* MANDATORY */
+.asha-app .mandatory-box{background:var(--gov-yel-lt);border:1px solid #fcd34d;border-left:3px solid var(--gov-yellow);border-radius:4px;padding:10px 12px;font-size:11px;margin-bottom:12px;font-family:'JetBrains Mono',monospace;}
+.asha-app .mandatory-box strong{color:var(--gov-yellow);display:block;margin-bottom:3px;font-family:'Noto Sans',sans-serif;}
+.asha-app .mandatory-preview{color:var(--gov-gray2);font-size:10px;border-top:1px dashed #fcd34d;margin-top:5px;padding-top:5px;}
+.asha-app .compose-wrap{margin-bottom:10px;position:relative;}
+.asha-app .char-count{position:absolute;bottom:8px;right:10px;font-size:10px;font-family:'JetBrains Mono',monospace;color:var(--gov-gray3);}
+
+/* LEVEL */
+.asha-app .level-row{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px;}
+.asha-app .level-btn-gov{border-radius:6px;padding:9px 6px;text-align:center;border:1.5px solid var(--gov-border);cursor:pointer;font-family:'Noto Sans',sans-serif;font-size:10px;font-weight:700;transition:all 0.25s cubic-bezier(0.22,1,0.36,1);background:white;display:flex;flex-direction:column;align-items:center;gap:3px;color:var(--gov-gray2);}
+.asha-app .level-btn-gov.lv-normal.sel{border-color:var(--gov-green);background:var(--gov-grn-lt);color:var(--gov-green);}
+.asha-app .level-btn-gov.lv-warn.sel{border-color:var(--gov-yellow);background:var(--gov-yel-lt);color:var(--gov-yellow);}
+.asha-app .level-btn-gov.lv-emergency.sel{border-color:var(--gov-red);background:var(--gov-red-lt);color:var(--gov-red);}
+
+/* SMS ITEMS */
+.asha-app .sms-item{border-radius:6px;padding:10px 12px;margin-bottom:8px;border:1px solid var(--gov-border);animation:asha-fadeUp 0.3s ease forwards;opacity:0;}
+@keyframes asha-fadeUp{to{opacity:1;}}
+.asha-app .sms-item.red{background:var(--gov-red-lt);border-color:#fca5a5;}
+.asha-app .sms-item.yellow{background:var(--gov-yel-lt);border-color:#fcd34d;}
+.asha-app .sms-item.green{background:var(--gov-grn-lt);border-color:#86efac;}
+.asha-app .sms-item.queued{background:#f9fafb;border:1px dashed #d1d5db;}
+.asha-app .sms-item-head{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:4px;gap:8px;}
+.asha-app .sms-item-who{font-size:12px;font-weight:700;}
+.asha-app .sms-item-who.red{color:var(--gov-red);}
+.asha-app .sms-item-who.yellow{color:var(--gov-yellow);}
+.asha-app .sms-item-who.green{color:var(--gov-green);}
+.asha-app .sms-item-time{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--gov-gray3);flex-shrink:0;}
+.asha-app .sms-item-msg{font-size:11px;color:var(--gov-gray);line-height:1.5;white-space:pre-wrap;}
+.asha-app .sms-item-delivered{margin-top:4px;font-size:10px;color:var(--gov-blue);display:flex;align-items:center;gap:4px;}
+.asha-app .live-dot{width:5px;height:5px;border-radius:50%;background:var(--gov-green);animation:asha-pulse 1.5s infinite;}
+
+/* HISTORY */
+.asha-app .hist-item{background:white;border:1px solid var(--gov-border);border-radius:6px;padding:12px;margin-bottom:10px;animation:asha-fadeUp 0.3s ease forwards;opacity:0;}
+.asha-app .hist-head{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;}
+.asha-app .hist-worker{font-weight:700;font-size:13px;}
+.asha-app .hist-village{font-size:10px;color:var(--gov-gray2);margin-top:2px;}
+.asha-app .hist-time{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--gov-gray3);text-align:right;}
+/* Widened to 5 columns (was 4) to fit the live pH reading captured at report time */
+.asha-app .hist-diseases{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-bottom:8px;}
+.asha-app .hist-d{text-align:center;padding:5px 4px;background:var(--gov-bg);border-radius:4px;border:1px solid var(--gov-border);}
+.asha-app .hist-d-val{font-family:'JetBrains Mono',monospace;font-size:16px;font-weight:700;}
+.asha-app .hist-d-lbl{font-size:9px;color:var(--gov-gray3);margin-top:1px;}
+.asha-app .hist-notes{font-size:11px;color:var(--gov-gray2);padding-top:7px;border-top:1px solid var(--gov-border);line-height:1.5;}
+
+/* DASHBOARD */
+.asha-app .dash-total{background:linear-gradient(135deg,#0f3460 0%,#1a56a0 100%);color:white;border-radius:6px;padding:16px;margin-bottom:12px;display:flex;align-items:center;justify-content:space-between;}
+.asha-app .dash-total-val{font-family:'JetBrains Mono',monospace;font-size:44px;font-weight:700;line-height:1;}
+.asha-app .dash-total-lbl{font-size:11px;opacity:0.8;margin-top:4px;}
+.asha-app .dbar-row{display:flex;align-items:center;gap:10px;margin-bottom:10px;}
+.asha-app .dbar-label{width:58px;font-size:11px;color:var(--gov-gray2);font-weight:600;flex-shrink:0;}
+.asha-app .dbar-track{flex:1;height:8px;background:var(--gov-bg);border-radius:4px;overflow:hidden;border:1px solid var(--gov-border);}
+.asha-app .dbar-fill{height:100%;border-radius:4px;transition:width 1s ease;}
+.asha-app .dbar-fill.c{background:var(--gov-red);}
+.asha-app .dbar-fill.f{background:var(--gov-yellow);}
+.asha-app .dbar-fill.t{background:#7c3aed;}
+.asha-app .dbar-fill.o{background:var(--gov-blue);}
+.asha-app .dbar-val{font-family:'JetBrains Mono',monospace;font-size:11px;width:20px;text-align:right;flex-shrink:0;}
+.asha-app .status-row-gov{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;}
+.asha-app .status-tile-gov{background:white;border:1px solid var(--gov-border);border-radius:6px;padding:12px;text-align:center;}
+.asha-app .status-tile-val{font-family:'JetBrains Mono',monospace;font-size:24px;font-weight:700;color:var(--gov-blue);line-height:1;}
+.asha-app .status-tile-lbl{font-size:10px;color:var(--gov-gray2);margin-top:3px;}
+.asha-app .act-item{display:flex;gap:8px;align-items:flex-start;padding:7px 0;border-bottom:1px solid var(--gov-border);}
+.asha-app .act-item:last-child{border-bottom:none;}
+.asha-app .act-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;margin-top:3px;}
+.asha-app .act-dot.red{background:var(--gov-red);}
+.asha-app .act-dot.yellow{background:var(--gov-yellow);}
+.asha-app .act-dot.green{background:var(--gov-green);}
+.asha-app .act-text{font-size:12px;line-height:1.4;}
+.asha-app .act-time{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--gov-gray3);margin-top:1px;}
+.asha-app .empty-state{text-align:center;padding:24px;color:var(--gov-gray3);font-size:12px;}
+.asha-app .empty-icon{font-size:26px;margin-bottom:6px;opacity:0.5;}
+.asha-app .alert-count-badge{display:none;background:var(--gov-red);color:white;font-size:9px;font-weight:700;padding:1px 5px;border-radius:20px;margin-left:4px;}
+.asha-app .alert-count-badge.show{display:inline-block;}
+
+/* AI RISK CARD (ASHA's own simple gradient card, distinct from the
+   dashboard's ai-risk-row bars used on the main Varun dashboard) */
+.asha-app .ai-risk-card{background:linear-gradient(135deg,#1e1b4b,#312e81);color:white;border-radius:8px;padding:14px;margin-bottom:12px;display:none;}
+.asha-app .ai-risk-label{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:1px;opacity:0.6;margin-bottom:4px;}
+.asha-app .ai-risk-val{font-size:28px;font-weight:700;font-family:'JetBrains Mono',monospace;line-height:1;margin-bottom:4px;}
+.asha-app .ai-risk-msg{font-size:11px;opacity:0.8;line-height:1.4;}
+.asha-app .ai-risk-meter{height:4px;background:rgba(255,255,255,0.15);border-radius:2px;margin-top:10px;overflow:hidden;}
+.asha-app .ai-risk-fill{height:100%;border-radius:2px;transition:width 1s ease;}
+.asha-app .ai-risk-ph-note{font-size:10px;opacity:0.85;margin-top:8px;padding-top:8px;border-top:1px solid rgba(255,255,255,0.15);display:flex;align-items:center;gap:6px;}
+
+/* WEATHER */
+.asha-app .weather-strip{background:var(--gov-blue-xs);border:1px solid var(--gov-blue-lt);border-radius:6px;padding:10px 14px;margin-bottom:12px;display:flex;align-items:center;gap:12px;}
+.asha-app .weather-icon{font-size:24px;flex-shrink:0;}
+.asha-app .weather-info{flex:1;}
+.asha-app .weather-label{font-size:9px;font-weight:700;color:var(--gov-blue);text-transform:uppercase;letter-spacing:0.5px;}
+.asha-app .weather-detail{font-size:11px;color:var(--gov-gray);margin-top:1px;font-weight:500;}
+.asha-app .weather-advisory{font-size:10px;color:var(--gov-yellow);font-weight:600;margin-top:2px;}
+.asha-app .weather-ph{font-size:10px;color:#0369a1;font-weight:700;margin-top:2px;}
+
+/* VOICE */
+.asha-app .voice-btn{display:flex;align-items:center;gap:8px;background:var(--gov-blue-xs);border:1px solid var(--gov-blue-lt);border-radius:6px;padding:8px 12px;cursor:pointer;font-size:11px;font-weight:600;color:var(--gov-blue);margin-bottom:10px;width:100%;transition:all 0.15s;}
+.asha-app .voice-btn.recording{background:var(--gov-red-lt);border-color:#fca5a5;color:var(--gov-red);animation:asha-recPulse 1s infinite;}
+@keyframes asha-recPulse{0%,100%{opacity:1}50%{opacity:0.7}}
+
+/* SYMPTOM CHIPS */
+.asha-app .symptom-chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;}
+.asha-app .sym-chip{background:white;border:1px solid var(--gov-border);border-radius:20px;padding:4px 10px;font-size:11px;cursor:pointer;transition:all 0.15s;color:var(--gov-gray2);font-weight:500;}
+.asha-app .sym-chip.sel{background:var(--gov-blue);border-color:var(--gov-blue);color:white;}
+
+@media (max-width: 480px) {
+  .asha-app .hist-diseases{grid-template-columns:repeat(3,1fr);}
+}
