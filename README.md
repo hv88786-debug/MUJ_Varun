@@ -97,6 +97,18 @@ The Vite development server normally runs at:
 http://localhost:5173
 ```
 
+The deployed ASHA portal opens at:
+
+```text
+https://muj-varun.vercel.app/asha/
+```
+
+The main dashboard remains available at:
+
+```text
+https://muj-varun.vercel.app/
+```
+
 For local frontend configuration, `frontend/.env` should contain:
 
 ```env
