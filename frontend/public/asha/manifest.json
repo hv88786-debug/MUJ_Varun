@@ -2,7 +2,7 @@
   "name": "VARUN — ASHA Worker Portal",
   "short_name": "ASHA Portal",
   "description": "Offline-first field reporting app for ASHA workers — waterborne disease symptom reports, synced to VARUN.",
-  "start_url": "/asha/index.html",
+  "start_url": "/asha/",
   "scope": "/asha/",
   "display": "standalone",
   "orientation": "portrait",

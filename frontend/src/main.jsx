@@ -10,6 +10,11 @@ import AshaPortal from './AshaPortal.jsx';
 const isAshaRoute = window.location.pathname.startsWith('/asha');
 const App = isAshaRoute ? AshaPortal : AquaGuard;
 
+// Use a separate manifest and service-worker scope for the ASHA PWA so an
+// ASHA home-screen shortcut never launches the main dashboard.
+const manifestLink = document.querySelector('link[rel="manifest"]');
+if (manifestLink && isAshaRoute) manifestLink.href = '/asha/manifest.json';
+
 createRoot(document.getElementById('root')).render(<App />);
 
 // Register the service worker so the app is installable ("Add to Home
@@ -17,7 +22,8 @@ createRoot(document.getElementById('root')).render(<App />);
 // in browsers/environments without SW support.
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js').catch((err) => {
+    const workerUrl = isAshaRoute ? '/asha/sw.js' : '/sw.js';
+    navigator.serviceWorker.register(workerUrl, { scope: isAshaRoute ? '/asha/' : '/' }).catch((err) => {
       console.warn('Service worker registration failed:', err);
     });
   });

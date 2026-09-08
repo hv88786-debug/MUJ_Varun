@@ -1,6 +1,6 @@
 // Retire the old standalone ASHA shell. The current portal is React and is
 // served by the root Vite app at /asha/.
-const CACHE_NAME = "asha-react-shell-v2";
+const CACHE_NAME = "asha-react-shell-v3";
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
