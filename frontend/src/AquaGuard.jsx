@@ -316,9 +316,6 @@ async function fetchSensors() {
   }
 }
 
-fetchSensors();
-_intervals.push(setInterval(fetchSensors, 5000));
-
 /* ══════════════════════════════════════════
    AI PREDICTION DATA — Live fetch
    FIX: Uses risk_level field, computes maxRisk,
@@ -436,8 +433,15 @@ async function fetchAI() {
     console.warn('[Varun] AI fetch failed:', err.message);
   }
 }
-fetchAI();
-_intervals.push(setInterval(fetchAI, 3000));
+async function refreshLiveData() {
+  // One cycle keeps sensor cards, maps, charts, banners and AI risk aligned
+  // to the same latest sensor snapshot.
+  await fetchSensors();
+  await fetchAI();
+}
+
+refreshLiveData();
+_intervals.push(setInterval(refreshLiveData, 5000));
 
 /* ══════════════════════════════════════════
    MAP CONSTANTS — village geo coords (static)
