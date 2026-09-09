@@ -1,9 +1,6 @@
 """Production entry point: Flask API plus the Telegram polling worker."""
 
 from app import app
-from telegram_bot import start_bot_background
-
-start_bot_background()
 
 if __name__ == "__main__":
     import os

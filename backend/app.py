@@ -287,6 +287,12 @@ def simulate_alert():
 # executing it as a script.
 predict.start_background_loop(on_high_severity=_dispatch_alerts_for_prediction)
 
+# Start the hierarchy listener even when Render is configured with the
+# historical `gunicorn app:app` command instead of the production entrypoint.
+from telegram_bot import start_bot_background
+
+start_bot_background()
+
 if __name__ == "__main__":
     # Local dev only — Render runs this via Gunicorn instead (see Procfile).
     port = int(os.environ.get("PORT", 5000))
