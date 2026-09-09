@@ -23,7 +23,6 @@ load_dotenv()  # reads .env in the working directory, if present — must
                 # import time.
 
 from telegram_alerts import (
-    format_alert_message,
     is_telegram_configured,
     send_telegram_alert,
 )
@@ -132,36 +131,55 @@ def predict_now():
 
 
 def _dispatch_alerts_for_prediction(payload: dict) -> None:
-    """Bridges the background prediction engine's high/critical results
-    into the existing Telegram/Twilio alert channels used by
-    /simulate-alert, so a bad AI reading auto-notifies authorities."""
-    village = payload.get("village", "Unknown village")
-    concern = payload.get("concern", "")
-    action = payload.get("action", "")
-    timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
+    """Store automatic predictions in the same hierarchy as manual alerts."""
+    sensors = payload.get("sensors", {})
+    severity = payload.get("severity", "warning")
+    village_key = os.getenv("DEFAULT_VILLAGE_KEY", "village_X")
+    location = {
+        "village": village_key,
+        "panchayat": os.getenv("DEFAULT_PANCHAYAT_KEY", "panchayat_Y"),
+        "tehsil": os.getenv("DEFAULT_TEHSIL_KEY", "tehsil_Z"),
+        "district": os.getenv("DEFAULT_DISTRICT_KEY", "district_D"),
+    }
+    signature = "|".join(str(sensors.get(field, "")) for field in (
+        "tds", "turbidity", "ph", "temperature", "salinity"
+    )) + f"|{severity}"
 
-    twilio_result = send_twilio_alerts(village, concern, action)
-    if not twilio_result["ok"]:
-        app.logger.info(f"Twilio not sent (auto-alert): {twilio_result['error']}")
-
-    if is_telegram_configured():
-        sensors = payload.get("sensors", {})
-        message = format_alert_message(
-            village=village,
-            tds=sensors.get("tds", "—"),
-            turbidity=sensors.get("turbidity", "—"),
-            ph=sensors.get("ph", "—"),
-            temperature=sensors.get("temperature", "—"),
-            ai_risk_pct=payload.get("overall", "—"),
-            timestamp=timestamp,
-            concern=concern,
-            action=action,
+    try:
+        existing = firebase_utils.get("alerts") or {}
+        duplicate = any(
+            isinstance(alert, dict)
+            and alert.get("source") == "auto_prediction"
+            and not alert.get("final_verdict")
+            and alert.get("prediction_signature") == signature
+            for alert in existing.values()
         )
-        result = send_telegram_alert(message)
-        if not result["ok"]:
-            app.logger.error(f"Telegram auto-alert failed: {result['error']}")
-    else:
-        app.logger.info("Telegram not configured — skipping auto-alert")
+        if duplicate:
+            app.logger.info("Auto prediction alert already active; skipping duplicate")
+            return
+        alert_id, _ = firebase_utils.push("alerts", {
+            "source": "auto_prediction",
+            "prediction_signature": signature,
+            "location": location,
+            "sensor_readings": {
+                "tds": sensors.get("tds", 0),
+                "turbidity": sensors.get("turbidity", 0),
+                "ph": sensors.get("ph", 7),
+                "salinity": sensors.get("salinity", 0),
+                "temp": sensors.get("temperature", 0),
+            },
+            "predicted_issue": {
+                "disease": payload.get("concern", "water_quality_risk"),
+                "confidence": payload.get("overall", 0),
+            },
+            "status": {"village": "pending", "panchayat": "pending", "tehsil": "pending", "district": "pending"},
+            "final_verdict": None,
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "resolved_at": None,
+        })
+        app.logger.info("Auto hierarchical alert created: %s", alert_id)
+    except firebase_utils.FirebaseError as exc:
+        app.logger.error("Auto hierarchical alert could not be created: %s", exc)
 
 
 @app.route("/simulate-alert", methods=["POST"])
