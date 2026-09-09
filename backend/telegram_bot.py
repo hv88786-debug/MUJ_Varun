@@ -8,6 +8,7 @@ import threading
 from datetime import datetime, timezone
 
 import firebase_utils
+from telegram.error import TelegramError
 from escalation_logic import check_escalation
 from hierarchy_utils import get_chat_id, get_location_for_chat, get_parent, load_mapping
 from telegram_config import hierarchy_bot_token, hierarchy_chat_id
@@ -78,7 +79,15 @@ async def _deliver_village_alert(application, alert_id: str, alert: dict) -> Non
     if not location_key:
         logger.error("Alert %s has no village location_key", alert_id)
         return
-    await _send_alert(application.bot, location_key, alert_id, alert)
+    try:
+        await _send_alert(application.bot, location_key, alert_id, alert)
+    except TelegramError as exc:
+        firebase_utils.update(
+            f"alerts/{alert_id}/delivery",
+            {"last_error": str(exc), "last_attempt_at": datetime.now(timezone.utc).isoformat()},
+        )
+        logger.error("Telegram delivery failed for alert %s to %s: %s", alert_id, location_key, exc)
+        return
     firebase_utils.update(
         f"alerts/{alert_id}/delivery",
         {"village_sent_at": datetime.now(timezone.utc).isoformat()},

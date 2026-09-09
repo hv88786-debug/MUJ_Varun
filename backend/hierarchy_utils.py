@@ -1,6 +1,7 @@
 """Lookups for the Firebase-backed administrative hierarchy."""
 
 import logging
+import os
 from typing import Any
 
 import firebase_utils
@@ -23,7 +24,9 @@ def _node(location_key: str) -> dict[str, Any] | None:
 
 def get_chat_id(location_key: str) -> str | None:
     node = _node(location_key)
-    return str(node["chat_id"]) if node and node.get("chat_id") is not None else None
+    level = str(node.get("level", "")).upper() if node else ""
+    configured = os.getenv(f"TELEGRAM_CHAT_ID_{level}") if level else None
+    return configured or (str(node["chat_id"]) if node and node.get("chat_id") is not None else None)
 
 
 def get_parent(location_key: str) -> str | None:
@@ -34,7 +37,10 @@ def get_parent(location_key: str) -> str | None:
 def get_location_for_chat(chat_id: int | str) -> tuple[str, dict[str, Any]] | None:
     wanted = str(chat_id)
     for location_key, node in load_mapping().items():
-        if str(node.get("chat_id")) == wanted:
+        level = str(node.get("level", "")).upper()
+        configured = os.getenv(f"TELEGRAM_CHAT_ID_{level}") if level else None
+        mapped_chat_id = configured or node.get("chat_id")
+        if str(mapped_chat_id) == wanted:
             return location_key, node
     logger.error("No hierarchy_mapping entry found for Telegram chat_id=%s", chat_id)
     return None
