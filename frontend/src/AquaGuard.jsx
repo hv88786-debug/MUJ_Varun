@@ -143,7 +143,7 @@ const _tdsHistory    = [];  // TDS mg/L
 const _turbHistory   = [];  // Turbidity NTU
 const _phHistory     = [];  // pH
 const _tempHistory   = [];  // Temperature °C
-const _salHistory    = [];  // Salinity ppt
+const _salHistory    = [];  // Salinity ppm
 
 // Keep backward compat alias
 const _tdsTimeLabels = _timeLabels;
@@ -157,6 +157,7 @@ let _displayAI = null;
 const FB_BASE        = import.meta.env.VITE_FIREBASE_BASE || "https://varun-735df-default-rtdb.firebaseio.com";
 const FB_SENSOR_PATH = import.meta.env.VITE_FIREBASE_SENSOR_PATH || 'sensor';
 const FB_SENSORS_URL = `${FB_BASE}/${FB_SENSOR_PATH}.json`;
+const SENSOR_VALUES_ARE_PERCENT = import.meta.env.VITE_SENSOR_VALUES_ARE_PERCENT !== 'false';
 const FB_AI_URL      = `${FB_BASE}/ai_prediction.json`;
 const FB_ALERTS_URL  = `${FB_BASE}/alerts.json`;
 const FB_ASHA_ALERTS_URL = `${FB_BASE}/asha_alerts.json`;
@@ -164,6 +165,11 @@ const FB_ASHA_ALERTS_URL = `${FB_BASE}/asha_alerts.json`;
 function smoothReading(previous, next, alpha) {
   if (previous === null || !Number.isFinite(previous)) return next;
   return previous + (next - previous) * alpha;
+}
+
+function percentageToReading(value) {
+  const percent = Math.min(100, Math.max(0, Number(value) || 0));
+  return 100 - percent;
 }
 
 function smoothSensors(next) {
@@ -207,13 +213,17 @@ async function fetchSensors() {
 
     // Parse all sensor fields from the configured Firebase sensor node.
     const tds      = parseFloat(d.tds)         || 0;
-    const turb     = parseFloat(d.turbidity)   || 0;
+    const turb     = SENSOR_VALUES_ARE_PERCENT
+      ? percentageToReading(d.turbidity)
+      : parseFloat(d.turbidity) || 0;
     const temp     = parseFloat(d.temperature) || 0;
-    const sal      = parseFloat(d.salinity)    || 0;
+    const sal      = SENSOR_VALUES_ARE_PERCENT
+      ? percentageToReading(d.salinity)
+      : parseFloat(d.salinity) || 0;
     const ph       = parseFloat(d.ph)          || 7.0;
     // Derive safety from the actual readings. The Firebase drinkable flag can
     // be stale, so it must never override an exceeded sensor limit.
-    const waterDrinkable = tds <= 500 && turb <= 4 && sal <= 0.5 && ph >= 6.5 && ph <= 8.5 && temp >= 5 && temp <= 35;
+    const waterDrinkable = tds <= 500 && turb <= 4 && sal <= 500 && ph >= 6.5 && ph <= 8.5 && temp >= 5 && temp <= 35;
 
     // Smooth noisy readings so cards, bars, charts and map values move gradually.
     const smoothed = smoothSensors({ tds, turbidity: turb, temperature: temp, salinity: sal, ph });
@@ -261,7 +271,7 @@ async function fetchSensors() {
     setBar('tds-bar',  Math.min(displayTds/500*100,  100), displayTds  > 500  ? '#dc2626' : '#1a56a0');
     setBar('turb-bar', Math.min(displayTurb/10*100,  100), displayTurb > 4    ? '#dc2626' : '#9b59b6');
     setBar('temp-bar', Math.min((displayTemp-5)/30*100,100),displayTemp > 35  ? '#dc2626' : '#e74c3c');
-    setBar('sal-bar',  Math.min(displaySal/2*100,    100), displaySal  > 0.5  ? '#dc2626' : '#f39c12');
+    setBar('sal-bar',  Math.min(displaySal/500*100, 100), displaySal > 500  ? '#dc2626' : '#f39c12');
     // pH bar: map 0–14 scale, highlight red if outside 6.5–8.5
     const phPct   = Math.min((displayPh / 14) * 100, 100);
     const phOK    = displayPh >= 6.5 && displayPh <= 8.5;
@@ -276,7 +286,7 @@ async function fetchSensors() {
     setPill('tds-status',  displayTds  <= 500);
     setPill('turb-status', displayTurb <= 4);
     setPill('temp-status', displayTemp >= 5 && displayTemp <= 35);
-    setPill('sal-status',  displaySal  <= 0.5);
+    setPill('sal-status',  displaySal  <= 500);
     setPill('ph-status',   phOK);
 
     const lu = document.getElementById('lastUpdated');
@@ -288,7 +298,7 @@ async function fetchSensors() {
     set('mp-tds',         displayTds.toFixed(0)  + ' mg/L');
     set('mp-turbidity',   displayTurb.toFixed(1) + ' NTU');
     set('mp-temperature', displayTemp.toFixed(1) + ' °C');
-    set('mp-salinity',    displaySal.toFixed(2)  + ' ppt');
+    set('mp-salinity',    displaySal.toFixed(2)  + ' ppm');
     set('mp-sensor-status', 'Connected');
     set('mp-data-status',   'Receiving');
     set('mp-last-updated',  nowStr);
@@ -1719,7 +1729,7 @@ function initAllSensorCharts() {
   _chartTurb = makeSensorChart('turbHistChart', 'Turbidity (NTU)', 'rgb(147,51,234)',  'NTU',  0, undefined, 4);
   _chartPH   = makeSensorChart('phHistChart',   'pH',              'rgb(16,163,127)',  '',     6, 9);
   _chartTemp = makeSensorChart('tempHistChart', 'Temp (°C)',       'rgb(234,88,12)',   '°C',   15, 45, 35);
-  _chartSal  = makeSensorChart('salHistChart',  'Salinity (ppt)',  'rgb(37,99,235)',   'ppt',  0, undefined, 0.5);
+  _chartSal  = makeSensorChart('salHistChart',  'Salinity (ppm)',  'rgb(37,99,235)',   'ppm',  0, undefined, 500);
   // backward compat alias
   _tdsHistChartInstance = _chartTDS;
 }
@@ -2113,8 +2123,8 @@ function maybeCriticalBeep() {
                 </tr>
                 <tr>
                   <td><strong>Salinity</strong><br /><span style={{fontSize: 10, color: 'var(--gov-gray3)'}}>लवणता</span></td>
-                  <td><span className="sensor-val-big" id="sal-val">—</span><span style={{fontSize: 10, color: 'var(--gov-gray2)'}}> ppt</span></td>
-                  <td style={{color: 'var(--gov-gray2)', fontSize: 11}}>&lt;0.5 ppt</td>
+                  <td><span className="sensor-val-big" id="sal-val">—</span><span style={{fontSize: 10, color: 'var(--gov-gray2)'}}> ppm</span></td>
+                  <td style={{color: 'var(--gov-gray2)', fontSize: 11}}>&lt;500 ppm</td>
                   <td><div className="sensor-progress"><div className="sensor-progress-fill" id="sal-bar" style={{width: '0%', background: '#f39c12'}} /></div></td>
                   <td><span className="status-pill pill-safe" id="sal-status">OK</span></td>
                 </tr>
@@ -2258,7 +2268,7 @@ function maybeCriticalBeep() {
         <div className="gov-card">
           <div className="gov-card-header">
             <div className="gov-card-title">Salinity — लवणता</div>
-            <span style={{fontSize: 10, color: 'var(--gov-gray2)'}}>WHO &lt;0.5 ppt</span>
+            <span style={{fontSize: 10, color: 'var(--gov-gray2)'}}>WHO &lt;500 ppm</span>
           </div>
           <div className="gov-card-body" style={{padding: '10px 14px'}}>
             <div style={{height: 180, position: 'relative'}}><canvas id="salHistChart" /></div>

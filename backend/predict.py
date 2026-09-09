@@ -29,6 +29,7 @@ SENSOR_SMOOTH_ALPHA = float(os.environ.get("SENSOR_SMOOTH_ALPHA", "0.35"))
 # on the same Firebase node used by the frontend dashboard.
 SENSOR_PATH = os.getenv("FIREBASE_SENSOR_PATH", "sensor").strip("/")
 SENSOR_URL  = f"{FIREBASE_BASE}/{SENSOR_PATH}.json" if FIREBASE_BASE else None
+SENSOR_VALUES_ARE_PERCENT = os.getenv("SENSOR_VALUES_ARE_PERCENT", "true").lower() != "false"
 PREDICT_URL = f"{FIREBASE_BASE}/ai_prediction.json" if FIREBASE_BASE else None
 HISTORY_URL = f"{FIREBASE_BASE}/history.json" if FIREBASE_BASE else None
 ALERTS_URL  = f"{FIREBASE_BASE}/alerts.json" if FIREBASE_BASE else None
@@ -50,11 +51,16 @@ def fetch_sensors():
         d = r.json()
         if not d:
             return None
+        turbidity = float(d.get("turbidity", 0))
+        salinity = float(d.get("salinity", 0))
+        if SENSOR_VALUES_ARE_PERCENT:
+            turbidity = max(0.0, min(100.0, 100.0 - turbidity))
+            salinity = max(0.0, min(100.0, 100.0 - salinity))
         raw_values = {
             "tds": float(d.get("tds", 0)),
-            "turbidity": float(d.get("turbidity", 0)),
+            "turbidity": turbidity,
             "temperature": float(d.get("temperature", d.get("temp", 25))),
-            "salinity": float(d.get("salinity", 0)),
+            "salinity": salinity,
             "ph": float(d.get("ph", 7.0)),
         }
         sensors = {
@@ -63,7 +69,7 @@ def fetch_sensors():
             "sensor_drinkable": (
                 raw_values["tds"] <= 500
                 and raw_values["turbidity"] <= 4
-                and raw_values["salinity"] <= 0.5
+                and raw_values["salinity"] <= 500
                 and 6.5 <= raw_values["ph"] <= 8.5
                 and 5 <= raw_values["temperature"] <= 35
             ),
@@ -179,7 +185,7 @@ def get_groq_prediction(sensors, flags, score, hard_critical=False):
     if "coliform" in sensors:
         extra += f" Coliform_present={bool(sensors['coliform'])}"
 
-    prompt = f"""AquaGuard AI. Sensors: TDS={sensors['tds']:.0f}mg/L Turbidity={sensors['turbidity']:.1f}NTU Temp={sensors['temperature']:.0f}C Salinity={sensors['salinity']:.2f}ppt pH={sensors['ph']:.1f}{extra}
+    prompt = f"""AquaGuard AI. Sensors: TDS={sensors['tds']:.0f}mg/L Turbidity={sensors['turbidity']:.1f}NTU Temp={sensors['temperature']:.0f}C Salinity={sensors['salinity']:.2f}ppm pH={sensors['ph']:.1f}{extra}
 Score:{score:.0f}/100 Flags:{len(flags)}{" HARD_CRITICAL:coliform detected, must be severity=critical, drinkable=false" if hard_critical else ""}
 {flags_text}
 JSON only, no text:
