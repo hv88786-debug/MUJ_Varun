@@ -245,7 +245,7 @@ def simulate_alert():
         if not telegram_sent:
             app.logger.error(f"Telegram dispatch failed: {telegram_error}")
     else:
-        telegram_error = "Telegram not configured — TELEGRAM_BOT_TOKEN/TELEGRAM_CHAT_ID missing"
+        telegram_error = "Telegram alerts not configured — TELEGRAM_BOT_TOKEN_ALERTS/TELEGRAM_CHAT_ID_ALERTS missing"
         app.logger.info(telegram_error)
 
     return jsonify(

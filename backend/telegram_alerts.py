@@ -28,6 +28,7 @@ frontend instead of faking a sent/success status.
 
 import os
 import requests
+from telegram_config import alerts_bot_token, alerts_chat_id
 
 TELEGRAM_API_BASE = "https://api.telegram.org"
 REQUEST_TIMEOUT_SECONDS = 8
@@ -35,9 +36,7 @@ REQUEST_TIMEOUT_SECONDS = 8
 
 def is_telegram_configured() -> bool:
     """True only if both required env vars are present and non-empty."""
-    return bool(os.environ.get("TELEGRAM_BOT_TOKEN")) and bool(
-        os.environ.get("TELEGRAM_CHAT_ID")
-    )
+    return bool(alerts_bot_token()) and bool(alerts_chat_id())
 
 
 def format_alert_message(
@@ -83,11 +82,11 @@ def send_telegram_alert(message: str) -> dict:
     if not is_telegram_configured():
         return {
             "ok": False,
-            "error": "TELEGRAM_BOT_TOKEN and/or TELEGRAM_CHAT_ID not set in environment",
+            "error": "TELEGRAM_BOT_TOKEN_ALERTS and/or TELEGRAM_CHAT_ID_ALERTS not set in environment",
         }
 
-    bot_token = os.environ["TELEGRAM_BOT_TOKEN"]
-    chat_id = os.environ["TELEGRAM_CHAT_ID"]
+    bot_token = alerts_bot_token()
+    chat_id = alerts_chat_id()
     url = f"{TELEGRAM_API_BASE}/bot{bot_token}/sendMessage"
 
     try:

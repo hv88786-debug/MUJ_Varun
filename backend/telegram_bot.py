@@ -10,6 +10,7 @@ from datetime import datetime, timezone
 import firebase_utils
 from escalation_logic import check_escalation
 from hierarchy_utils import get_chat_id, get_location_for_chat, get_parent, load_mapping
+from telegram_config import hierarchy_bot_token, hierarchy_chat_id
 
 logger = logging.getLogger(__name__)
 POLL_SECONDS = float(os.getenv("ALERT_POLL_SECONDS", "5"))
@@ -40,7 +41,7 @@ def _keyboard(alert_id: str):
 
 
 async def _send_alert(bot, location_key: str, alert_id: str, alert: dict) -> None:
-    chat_id = get_chat_id(location_key)
+    chat_id = get_chat_id(location_key) or hierarchy_chat_id()
     if not chat_id:
         logger.error("Cannot send alert %s: no chat_id for %s", alert_id, location_key)
         return
@@ -130,9 +131,9 @@ def run_bot() -> None:
     # Python 3.13 does not create an event loop automatically for a worker
     # thread; python-telegram-bot needs one before run_polling starts.
     asyncio.set_event_loop(asyncio.new_event_loop())
-    token = os.getenv("TELEGRAM_BOT_TOKEN")
+    token = hierarchy_bot_token()
     if not token:
-        logger.warning("Telegram bot disabled: TELEGRAM_BOT_TOKEN is not configured")
+        logger.warning("Telegram hierarchy bot disabled: TELEGRAM_BOT_TOKEN_HIERARCHY is not configured")
         return
     try:
         mapping = load_mapping()
@@ -150,6 +151,6 @@ def run_bot() -> None:
 
 
 def start_bot_background() -> None:
-    if not os.getenv("TELEGRAM_BOT_TOKEN"):
+    if not hierarchy_bot_token():
         return
     threading.Thread(target=run_bot, name="telegram-bot", daemon=True).start()
