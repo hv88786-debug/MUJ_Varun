@@ -120,7 +120,7 @@ def predict_now():
     in backend/.env.
     """
     body = request.get_json(silent=True) or {}
-    village = body.get("village", "Nasirabad")
+    village = body.get("village") or os.getenv("DEFAULT_VILLAGE_NAME", "Nasirabad")
     try:
         payload = predict.run_prediction_once(village=village)
         return jsonify(payload), 200
@@ -176,10 +176,10 @@ def simulate_alert():
     # populated by the ESP32/prediction pipeline; for the hackathon it is
     # also convenient to create one from the existing frontend button.
     location = data.get("location") or {
-        "village": data.get("village_key", "village_X"),
-        "panchayat": data.get("panchayat_key", "panchayat_Y"),
-        "tehsil": data.get("tehsil_key", "tehsil_Z"),
-        "district": data.get("district_key", "district_D"),
+        "village": data.get("village_key") or os.getenv("DEFAULT_VILLAGE_KEY", "village_X"),
+        "panchayat": data.get("panchayat_key") or os.getenv("DEFAULT_PANCHAYAT_KEY", "panchayat_Y"),
+        "tehsil": data.get("tehsil_key") or os.getenv("DEFAULT_TEHSIL_KEY", "tehsil_Z"),
+        "district": data.get("district_key") or os.getenv("DEFAULT_DISTRICT_KEY", "district_D"),
     }
     alert_id = None
     try:

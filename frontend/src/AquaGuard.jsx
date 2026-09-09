@@ -155,7 +155,8 @@ let _displayAI = null;
 
 /* Firebase URLs must be initialized before any polling function runs. */
 const FB_BASE        = import.meta.env.VITE_FIREBASE_BASE || "https://varun-735df-default-rtdb.firebaseio.com";
-const FB_SENSORS_URL = `${FB_BASE}/water.json`;
+const FB_SENSOR_PATH = import.meta.env.VITE_FIREBASE_SENSOR_PATH || 'sensor';
+const FB_SENSORS_URL = `${FB_BASE}/${FB_SENSOR_PATH}.json`;
 const FB_AI_URL      = `${FB_BASE}/ai_prediction.json`;
 const FB_ALERTS_URL  = `${FB_BASE}/alerts.json`;
 const FB_ASHA_ALERTS_URL = `${FB_BASE}/asha_alerts.json`;
@@ -204,7 +205,7 @@ async function fetchSensors() {
     const d = await resp.json();
     if (!d) return;
 
-    // Parse all sensor fields — data is at /water node in Firebase
+    // Parse all sensor fields from the configured Firebase sensor node.
     const tds      = parseFloat(d.tds)         || 0;
     const turb     = parseFloat(d.turbidity)   || 0;
     const temp     = parseFloat(d.temperature) || 0;
@@ -771,6 +772,29 @@ function parseFirebaseAlerts(raw) {
   } else if (typeof raw === 'object') {
     arr = Object.values(raw).filter(Boolean);
   } else return null;
+  arr = arr.map(a => {
+    const location = a.location || {};
+    const readings = a.sensor_readings || {};
+    const issue = a.predicted_issue || {};
+    const status = (a.status && typeof a.status === 'object') ? a.status : {};
+    const severity = a.severity || (a.final_verdict ? 'critical' : 'warning');
+    return {
+      ...a,
+      village: a.village || location.village_name || location.village || '—',
+      village_name: a.village_name || location.village_name || location.village || '—',
+      severity,
+      type: severity,
+      issue: a.issue || a.concern || issue.disease || 'Water quality alert',
+      concern: a.concern || a.issue || issue.disease || 'Water quality alert',
+      action: a.action || (a.final_verdict ? a.final_verdict : 'Review required'),
+      tds: a.tds ?? readings.tds ?? '—',
+      turb: a.turb ?? a.turbidity ?? readings.turbidity ?? '—',
+      ph: a.ph ?? readings.ph ?? '—',
+      risk: a.risk ?? a.ai_risk ?? issue.confidence ?? '—',
+      hierarchy_status: Object.entries(status).filter(([, value]) => value !== 'pending')
+        .map(([level, value]) => `${level}: ${value}`).join(', '),
+    };
+  });
   arr.sort((a, b) => {
     if (a.timestamp && b.timestamp) return new Date(b.timestamp) - new Date(a.timestamp);
     return 0;

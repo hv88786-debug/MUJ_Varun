@@ -27,7 +27,8 @@ SENSOR_SMOOTH_ALPHA = float(os.environ.get("SENSOR_SMOOTH_ALPHA", "0.35"))
 
 # The live device writes readings under /water. Keep the prediction engine
 # on the same Firebase node used by the frontend dashboard.
-SENSOR_URL  = f"{FIREBASE_BASE}/water.json" if FIREBASE_BASE else None
+SENSOR_PATH = os.getenv("FIREBASE_SENSOR_PATH", "sensor").strip("/")
+SENSOR_URL  = f"{FIREBASE_BASE}/{SENSOR_PATH}.json" if FIREBASE_BASE else None
 PREDICT_URL = f"{FIREBASE_BASE}/ai_prediction.json" if FIREBASE_BASE else None
 HISTORY_URL = f"{FIREBASE_BASE}/history.json" if FIREBASE_BASE else None
 ALERTS_URL  = f"{FIREBASE_BASE}/alerts.json" if FIREBASE_BASE else None
@@ -333,7 +334,8 @@ _RISK_LEVEL_MAP = {
 }
 
 
-def upload(sensors, pred, village="Nasirabad"):
+def upload(sensors, pred, village=None):
+    village = village or os.getenv("DEFAULT_VILLAGE_NAME", "Nasirabad")
     severity = pred.get("severity", "safe")
     payload = {
         "cholera":    pred.get("cholera_risk", 0),
@@ -355,7 +357,7 @@ def upload(sensors, pred, village="Nasirabad"):
     return payload
 
 
-def run_prediction_once(village="Nasirabad"):
+def run_prediction_once(village=None):
     """One full predict cycle. Raises on missing config/Firebase/Groq errors
     so the Flask route can turn that into a clean error response."""
     if not is_predict_configured():
