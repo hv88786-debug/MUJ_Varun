@@ -158,6 +158,7 @@ const FB_BASE        = import.meta.env.VITE_FIREBASE_BASE || "https://varun-735d
 const FB_SENSOR_PATH = import.meta.env.VITE_FIREBASE_SENSOR_PATH || 'sensor';
 const FB_SENSORS_URL = `${FB_BASE}/${FB_SENSOR_PATH}.json`;
 const SENSOR_VALUES_ARE_PERCENT = import.meta.env.VITE_SENSOR_VALUES_ARE_PERCENT !== 'false';
+const SALINITY_HIGH_VOLTAGE = Number(import.meta.env.VITE_SALINITY_HIGH_VOLTAGE || 1.5);
 const FB_AI_URL      = `${FB_BASE}/ai_prediction.json`;
 const FB_ALERTS_URL  = `${FB_BASE}/alerts.json`;
 const FB_ASHA_ALERTS_URL = `${FB_BASE}/asha_alerts.json`;
@@ -217,16 +218,23 @@ async function fetchSensors() {
       ? percentageToReading(d.turbidity)
       : parseFloat(d.turbidity) || 0;
     const temp     = parseFloat(d.temperature) || 0;
-    const sal      = SENSOR_VALUES_ARE_PERCENT
-      ? percentageToReading(d.salinity)
-      : parseFloat(d.salinity) || 0;
+    const salinityVoltage = Number(d.salinity_voltage ?? d.salinityVoltage ?? NaN);
+    const hasSalinityVoltage = Number.isFinite(salinityVoltage);
+    const sal      = hasSalinityVoltage
+      ? Math.max(0, salinityVoltage)
+      : SENSOR_VALUES_ARE_PERCENT
+        ? percentageToReading(d.salinity)
+        : parseFloat(d.salinity) || 0;
+    const salinityState = hasSalinityVoltage
+      ? (salinityVoltage >= SALINITY_HIGH_VOLTAGE ? 'HIGH' : 'LOW')
+      : (sal > 500 ? 'HIGH' : 'LOW');
     const ph       = parseFloat(d.ph)          || 7.0;
     // Derive safety from the actual readings. The Firebase drinkable flag can
     // be stale, so it must never override an exceeded sensor limit.
-    const waterDrinkable = tds <= 500 && turb <= 4 && sal <= 500 && ph >= 6.5 && ph <= 8.5 && temp >= 5 && temp <= 35;
+    const waterDrinkable = tds <= 500 && turb <= 4 && sal <= 500 && salinityState !== 'HIGH' && ph >= 6.5 && ph <= 8.5 && temp >= 5 && temp <= 35;
 
     // Smooth noisy readings so cards, bars, charts and map values move gradually.
-    const smoothed = smoothSensors({ tds, turbidity: turb, temperature: temp, salinity: sal, ph });
+    const smoothed = smoothSensors({ tds, turbidity: turb, temperature: temp, salinity: sal, salinityVoltage, salinityState, ph });
     const displayTds = smoothed.tds;
     const displayTurb = smoothed.turbidity;
     const displayTemp = smoothed.temperature;
@@ -261,7 +269,8 @@ async function fetchSensors() {
     set('tds-val',  displayTds.toFixed(0));
     set('turb-val', displayTurb.toFixed(1));
     set('temp-val', displayTemp.toFixed(1));
-    set('sal-val',  displaySal.toFixed(2));
+    set('sal-val',  hasSalinityVoltage ? `${displaySal.toFixed(3)} V (${salinityState})` : displaySal.toFixed(2));
+    set('sal-unit', hasSalinityVoltage ? '' : ' ppm');
     set('ph-val',   displayPh.toFixed(2));
 
     const setBar = (id, pct, color) => {
@@ -2123,7 +2132,7 @@ function maybeCriticalBeep() {
                 </tr>
                 <tr>
                   <td><strong>Salinity</strong><br /><span style={{fontSize: 10, color: 'var(--gov-gray3)'}}>लवणता</span></td>
-                  <td><span className="sensor-val-big" id="sal-val">—</span><span style={{fontSize: 10, color: 'var(--gov-gray2)'}}> ppm</span></td>
+                  <td><span className="sensor-val-big" id="sal-val">—</span><span id="sal-unit" style={{fontSize: 10, color: 'var(--gov-gray2)'}}> ppm</span></td>
                   <td style={{color: 'var(--gov-gray2)', fontSize: 11}}>&lt;500 ppm</td>
                   <td><div className="sensor-progress"><div className="sensor-progress-fill" id="sal-bar" style={{width: '0%', background: '#f39c12'}} /></div></td>
                   <td><span className="status-pill pill-safe" id="sal-status">OK</span></td>

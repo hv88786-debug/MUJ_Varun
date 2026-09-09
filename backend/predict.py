@@ -30,6 +30,7 @@ SENSOR_SMOOTH_ALPHA = float(os.environ.get("SENSOR_SMOOTH_ALPHA", "0.35"))
 SENSOR_PATH = os.getenv("FIREBASE_SENSOR_PATH", "sensor").strip("/")
 SENSOR_URL  = f"{FIREBASE_BASE}/{SENSOR_PATH}.json" if FIREBASE_BASE else None
 SENSOR_VALUES_ARE_PERCENT = os.getenv("SENSOR_VALUES_ARE_PERCENT", "true").lower() != "false"
+SALINITY_HIGH_VOLTAGE = float(os.getenv("SALINITY_HIGH_VOLTAGE", "1.5"))
 PREDICT_URL = f"{FIREBASE_BASE}/ai_prediction.json" if FIREBASE_BASE else None
 HISTORY_URL = f"{FIREBASE_BASE}/history.json" if FIREBASE_BASE else None
 ALERTS_URL  = f"{FIREBASE_BASE}/alerts.json" if FIREBASE_BASE else None
@@ -52,15 +53,24 @@ def fetch_sensors():
         if not d:
             return None
         turbidity = float(d.get("turbidity", 0))
-        salinity = float(d.get("salinity", 0))
+        salinity_voltage = d.get("salinity_voltage", d.get("salinityVoltage"))
+        has_salinity_voltage = salinity_voltage not in (None, "")
+        salinity_voltage = float(salinity_voltage) if has_salinity_voltage else None
+        salinity = salinity_voltage if has_salinity_voltage else float(d.get("salinity", 0))
         if SENSOR_VALUES_ARE_PERCENT:
             turbidity = max(0.0, min(100.0, 100.0 - turbidity))
-            salinity = max(0.0, min(100.0, 100.0 - salinity))
+            if not has_salinity_voltage:
+                salinity = max(0.0, min(100.0, 100.0 - salinity))
         raw_values = {
             "tds": float(d.get("tds", 0)),
             "turbidity": turbidity,
             "temperature": float(d.get("temperature", d.get("temp", 25))),
             "salinity": salinity,
+            "salinity_voltage": salinity_voltage,
+            "salinity_state": (
+                "HIGH" if has_salinity_voltage and salinity_voltage >= SALINITY_HIGH_VOLTAGE
+                else "LOW"
+            ),
             "ph": float(d.get("ph", 7.0)),
         }
         sensors = {
@@ -70,6 +80,7 @@ def fetch_sensors():
                 raw_values["tds"] <= 500
                 and raw_values["turbidity"] <= 4
                 and raw_values["salinity"] <= 500
+                and raw_values["salinity_state"] != "HIGH"
                 and 6.5 <= raw_values["ph"] <= 8.5
                 and 5 <= raw_values["temperature"] <= 35
             ),
