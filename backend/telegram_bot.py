@@ -16,16 +16,33 @@ logger = logging.getLogger(__name__)
 POLL_SECONDS = float(os.getenv("ALERT_POLL_SECONDS", "5"))
 
 
-def format_alert(alert_id: str, alert: dict) -> str:
+def format_alert(alert_id: str, alert: dict, recipient_key: str | None = None) -> str:
     location = alert.get("location") or {}
     readings = alert.get("sensor_readings") or {}
     issue = alert.get("predicted_issue") or {}
     status = alert.get("status") or {}
     history = ", ".join(f"{level}: {value}" for level, value in status.items() if value != "pending") or "None"
+    mapping = load_mapping()
+    recipient = mapping.get(recipient_key or "", {}) if recipient_key else {}
+    recipient_level = recipient.get("level", recipient_key or "current level")
+    cleared_levels = [level for level, value in status.items() if value == "no_problem"]
+    escalation_lines = []
+    if cleared_levels and recipient_key and recipient_key not in cleared_levels:
+        cleared_text = ", ".join(cleared_levels)
+        escalation_lines = [
+            "<b>Level update:</b> No problem found at " + html.escape(cleared_text) + " level.",
+            "<b>Escalation:</b> Possible issue is coming from an upper water source; review required at "
+            + html.escape(str(recipient_level)) + " level.",
+        ]
+    elif recipient_key:
+        escalation_lines = [
+            "<b>Level:</b> " + html.escape(str(recipient_level)) + " verification pending.",
+        ]
     return "\n".join([
         "<b>Water-quality alert</b>",
         f"<b>Alert:</b> {html.escape(alert_id)}",
         f"<b>Location:</b> {html.escape(str(location))}",
+        *escalation_lines,
         f"<b>Readings:</b> TDS {readings.get('tds', 'n/a')}, turbidity {readings.get('turbidity', 'n/a')}, "
         f"pH {readings.get('ph', 'n/a')}, salinity {readings.get('salinity', 'n/a')}, temp {readings.get('temp', 'n/a')}",
         f"<b>Predicted issue:</b> {html.escape(str(issue.get('disease', 'unknown')))} "
@@ -45,7 +62,12 @@ async def _send_alert(bot, location_key: str, alert_id: str, alert: dict) -> Non
     if not chat_id:
         logger.error("Cannot send alert %s: no chat_id for %s", alert_id, location_key)
         return
-    await bot.send_message(chat_id=chat_id, text=format_alert(alert_id, alert), parse_mode="HTML", reply_markup=_keyboard(alert_id))
+    await bot.send_message(
+        chat_id=chat_id,
+        text=format_alert(alert_id, alert, recipient_key=location_key),
+        parse_mode="HTML",
+        reply_markup=_keyboard(alert_id),
+    )
 
 
 async def _deliver_village_alert(application, alert_id: str, alert: dict) -> None:
@@ -113,7 +135,10 @@ async def _callback(update, context) -> None:
     parent = get_parent(location_key)
     if parent:
         await _send_alert(context.bot, parent, alert_id, result["alert"])
-        await query.edit_message_text(f"Recorded at {level}; forwarded to {parent}.")
+        await query.edit_message_text(
+            f"No problem found at {level} level. Forwarded to upper level ({parent}) "
+            "to check whether the issue is coming from the upstream water source."
+        )
     else:
         if value == "no_problem":
             verdict = f"No problem reported at all configured levels; review completed at {level} ({location_key})"
