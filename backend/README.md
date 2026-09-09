@@ -9,14 +9,40 @@ source venv/bin/activate          # Windows: venv\Scripts\activate
 pip install -r requirements.txt
 
 cp .env.example .env
-# edit .env — fill in TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID at minimum
-# (leave TWILIO_* blank until you're ready to implement that part)
+# edit .env — fill in TELEGRAM_BOT_TOKEN and FIREBASE_BASE at minimum
+# and configure Firebase REST authentication if your database is protected.
+
+pip install -r requirements.txt
+
+# Seed the demo chain once. The mapping is deliberately in Firebase, not code.
+python setup_hierarchy.py
 
 flask --app app run --port 5000
 # or: python app.py
 ```
 
 The server listens on `http://127.0.0.1:5000`.
+
+## Hierarchical Telegram flow
+
+The deployed entry point is `main:app` (also used by the Procfile). It starts
+the async `python-telegram-bot` worker and a small Firebase alert poller. For
+the current live demo, new records under `alerts/` are sent to Village and a
+Village callback forwards the same alert to Tehsil. A Tehsil `no_problem`
+response completes the two-level review. Additional administrative levels can
+be restored by extending the Firebase mapping and escalation list.
+
+Useful dashboard endpoints:
+
+```text
+GET /alert-status/<alert_id>
+GET /hierarchy-mapping
+```
+
+For a real ESP32/prediction integration, write an alert using the schema in the
+project request. `/simulate-alert` also creates that schema for the existing
+frontend demo button. In production the mapping would be populated through a
+registration flow; `setup_hierarchy.py` is the pre-configured hackathon seed.
 
 ## 2. Point the frontend at it
 

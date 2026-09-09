@@ -28,6 +28,8 @@ from telegram_alerts import (
     send_telegram_alert,
 )
 import predict
+import firebase_utils
+from hierarchy_utils import load_mapping
 
 app = Flask(__name__)
 
@@ -78,6 +80,36 @@ def health():
             "timestamp": datetime.now(timezone.utc).isoformat(),
         }
     ), 200
+
+
+@app.route("/hierarchy-mapping", methods=["GET"])
+def hierarchy_mapping():
+    """Read-only mapping endpoint for the dashboard's vertical tracker."""
+    try:
+        return jsonify(load_mapping()), 200
+    except firebase_utils.FirebaseError as exc:
+        app.logger.error("Could not load hierarchy mapping: %s", exc)
+        return jsonify({"error": str(exc)}), 503
+
+
+@app.route("/alert-status/<alert_id>", methods=["GET"])
+def alert_status(alert_id):
+    try:
+        alert = firebase_utils.get(f"alerts/{alert_id}")
+    except firebase_utils.FirebaseError as exc:
+        return jsonify({"error": str(exc)}), 503
+    if not alert:
+        return jsonify({"error": "Alert not found"}), 404
+    return jsonify({
+        "alert_id": alert_id,
+        "location": alert.get("location", {}),
+        "status": alert.get("status", {}),
+        "final_verdict": alert.get("final_verdict"),
+        "resolved_at": alert.get("resolved_at"),
+        "timestamp": alert.get("timestamp"),
+        "sensor_readings": alert.get("sensor_readings", {}),
+        "predicted_issue": alert.get("predicted_issue", {}),
+    }), 200
 
 
 @app.route("/predict-now", methods=["GET", "POST"])
@@ -139,6 +171,43 @@ def simulate_alert():
     severity = data.get("severity", "warning")
     concern = data.get("concern", "")
     action = data.get("action", "")
+
+    # The demo creates a durable hierarchical alert. In production this is
+    # populated by the ESP32/prediction pipeline; for the hackathon it is
+    # also convenient to create one from the existing frontend button.
+    location = data.get("location") or {
+        "village": data.get("village_key", "village_X"),
+        "panchayat": data.get("panchayat_key", "panchayat_Y"),
+        "tehsil": data.get("tehsil_key", "tehsil_Z"),
+        "district": data.get("district_key", "district_D"),
+    }
+    alert_id = None
+    try:
+        alert_id, _ = firebase_utils.push("alerts", {
+            "location": location,
+            "sensor_readings": {
+                "tds": data.get("tds", 0), "turbidity": data.get("turbidity", 0),
+                "ph": data.get("ph", 7), "salinity": data.get("salinity", 0),
+                "temp": data.get("temp", data.get("temperature", 0)),
+            },
+            "predicted_issue": {
+                "disease": data.get("disease", concern or "water_quality_risk"),
+                "confidence": data.get("confidence", data.get("ai_risk_pct", 0)),
+            },
+            "status": {"village": "pending", "panchayat": "pending", "tehsil": "pending", "district": "pending"},
+            "final_verdict": None,
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "resolved_at": None,
+        })
+        return jsonify({
+            "alert_id": alert_id,
+            "severity": severity,
+            "village": village,
+            "flow": "hierarchical_alert_created",
+            "message": "Alert stored; the village Telegram group will be notified by the listener.",
+        }), 202
+    except firebase_utils.FirebaseError as exc:
+        app.logger.warning("Hierarchical alert was not created; using legacy dispatch: %s", exc)
 
     timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
 

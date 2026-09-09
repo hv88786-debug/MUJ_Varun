@@ -1180,12 +1180,8 @@ _intervals.push(setInterval(fetchAshaWorkerAlerts, 8000));
 
 // ── CONTACTS LIST ──
 const ALERT_CONTACTS = [
-  { name: 'District Health Officer', dept: 'DHO Office, Dhanbad',              number: '+91-98XXXXXX10', icon: '', role: 'Primary' },
-  { name: 'Block Medical Officer',   dept: 'BMO, Jharia',                      number: '+91-98XXXXXX11', icon: '', role: 'Primary' },
-  { name: 'ASHA Supervisor',         dept: 'NHM Field Team, Jharkhand',        number: '+91-98XXXXXX12', icon: '', role: 'Field' },
-  { name: 'DWSM Water Officer',      dept: 'District Water & Sanitation Mission, Dhanbad', number: '+91-98XXXXXX13', icon: '', role: 'Dept' },
-  { name: 'Deputy Commissioner',     dept: 'DC Office, Dhanbad',               number: '+91-98XXXXXX14', icon: '', role: 'Authority' },
-  { name: 'Paani Samiti Convenor',   dept: 'VWSC, Jharia Gram Panchayat',      number: '+91-98XXXXXX15', icon: '', role: 'Field' },
+  { name: 'Village Officer', dept: 'Village control group · Telegram', number: 'Village level', icon: '', role: 'First response' },
+  { name: 'Tehsil Officer', dept: 'Tehsil escalation chat · Telegram', number: 'Tehsil level', icon: '', role: 'Escalation' },
 ];
 
 let alertSystemBusy = false;
@@ -1204,15 +1200,13 @@ function channelBadge(st) {
 }
 
 // ── RENDER CONTACTS ──
-// Each authority now shows a status badge per channel (WhatsApp/SMS via
-// Twilio, and Telegram). `statuses[i]` is `{ twilio, telegram }`; both
-// default to 'idle' before the first alert is triggered.
+// Each configured officer represents one step in the Firebase/Telegram
+// hierarchy. The backend forwards Village confirmations to Tehsil.
 function renderContacts(statuses) {
   const list = document.getElementById('contactsList');
   if (!list) return;
   list.innerHTML = ALERT_CONTACTS.map((c, i) => {
-    const st = statuses ? statuses[i] : { twilio: 'idle', telegram: 'idle' };
-    const tw = channelBadge(st.twilio);
+    const st = statuses ? statuses[i] : { telegram: 'idle' };
     const tg = channelBadge(st.telegram);
     return `
       <div class="contact-row" id="contactRow_${i}">
@@ -1223,8 +1217,7 @@ function renderContacts(statuses) {
         </div>
         <div style="margin-right:10px;"><span class="contact-dept">${c.dept}</span></div>
         <div class="contact-channels">
-          <span class="channel-badge ${tw.cls}" id="csBadge_${i}" title="WhatsApp/SMS via Twilio">WA/SMS · ${tw.label}</span>
-          <span class="channel-badge ${tg.cls}" id="tgBadge_${i}" title="Telegram bot alert">Telegram · ${tg.label}</span>
+          <span class="channel-badge ${tg.cls}" id="tgBadge_${i}" title="Telegram hierarchy alert">Telegram · ${tg.label}</span>
         </div>
       </div>`;
   }).join('');
@@ -1472,7 +1465,7 @@ async function triggerEmergencyAlert() {
   showAlertPopup(VILLAGE, ALERT_MSG);
 
   // Init per-channel statuses
-  const statuses = ALERT_CONTACTS.map(() => ({ twilio: 'idle', telegram: 'idle' }));
+  const statuses = ALERT_CONTACTS.map(() => ({ telegram: 'idle' }));
   renderContacts(statuses);
 
   addLog('', `CRITICAL ALERT TRIGGERED — Village: ${VILLAGE}`, 'log-text-sending');
@@ -1498,6 +1491,14 @@ async function triggerEmergencyAlert() {
         body: JSON.stringify({
           severity: SEVERITY,
           village:  VILLAGE,
+          village_key: 'village_X',
+          panchayat_key: 'panchayat_Y',
+          tehsil_key: 'tehsil_Z',
+          tds: Number(tdsLive),
+          turbidity: Number(turbLive),
+          ph: Number(phLive),
+          salinity: Number((_liveSensors.salinity || 0).toFixed(2)),
+          temperature: Number((_liveSensors.temperature || 0).toFixed(1)),
           concern:  'High TDS & turbidity — Cholera risk detected',
           action:   'Immediate inspection and water treatment required',
         }),
@@ -1505,8 +1506,13 @@ async function triggerEmergencyAlert() {
       });
       if (resp.ok) {
         const result = await resp.json();
-        twilioSucceeded = !!(result.twilio_sent ?? result.contacts);
-        addLog('', `Backend confirmed: ${result.contacts ?? '—'} authorities queued via WhatsApp/SMS`, 'log-text-success');
+        const hierarchicalAlert = Boolean(result.alert_id);
+        twilioSucceeded = false;
+        telegramConfigured = hierarchicalAlert ? true : (typeof result.telegram_configured !== 'undefined' ? !!result.telegram_configured : null);
+        telegramSucceeded = hierarchicalAlert;
+        addLog('', hierarchicalAlert
+          ? `Firebase alert ${result.alert_id} created — Village Officer notified by Telegram flow`
+          : `Backend confirmed: legacy alert dispatch`, 'log-text-success');
 
         if (typeof result.telegram_configured !== 'undefined') {
           telegramConfigured = !!result.telegram_configured;
@@ -1541,35 +1547,34 @@ async function triggerEmergencyAlert() {
   // Loop through contacts with animated steps
   for (let i = 0; i < ALERT_CONTACTS.length; i++) {
     const c = ALERT_CONTACTS[i];
+    const villageStep = i === 0;
 
-    statuses[i] = { twilio: 'sending', telegram: telegramOff ? 'off' : 'sending' };
+    statuses[i] = { telegram: telegramOff ? 'off' : villageStep ? 'sending' : 'idle' };
     renderContacts(statuses);
-    setChannelBadge(i, 'twilio', 'cs-sending', 'Sending...');
-    setChannelBadge(i, 'telegram', telegramOff ? 'cs-idle' : 'cs-sending', telegramOff ? 'Not configured' : 'Sending...');
-    addLog('', `Sending to ${c.name} (${c.number}) via WhatsApp/SMS${telegramOff ? '' : ' + Telegram'}...`, 'log-text-sending');
+    setChannelBadge(i, 'telegram', telegramOff ? 'cs-idle' : villageStep ? 'cs-sending' : 'cs-idle', telegramOff ? 'Not configured' : villageStep ? 'Sending...' : 'Waiting for Village resolution');
+    addLog('', villageStep ? `Routing alert to ${c.name} via Telegram hierarchy...` : `${c.name} will receive the alert after Village Officer resolution`, villageStep ? 'log-text-sending' : 'log-text-info');
 
     await sleep(1200);
 
-    statuses[i].twilio = twilioSucceeded ? 'sent' : 'failed';
-    setChannelBadge(i, 'twilio', twilioSucceeded ? 'cs-sent' : 'cs-failed', twilioSucceeded ? 'Sent' : 'Not delivered');
+    if (!villageStep) continue;
 
     if (telegramOff) {
       statuses[i].telegram = 'off';
       setChannelBadge(i, 'telegram', 'cs-idle', 'Not configured');
     } else {
       statuses[i].telegram = telegramSucceeded ? 'sent' : 'failed';
-      setChannelBadge(i, 'telegram', telegramSucceeded ? 'cs-sent' : 'cs-failed', telegramSucceeded ? 'Sent' : 'Not delivered');
+      setChannelBadge(i, 'telegram', telegramSucceeded ? 'cs-sent' : 'cs-failed', telegramSucceeded ? 'Queued' : 'Not delivered');
     }
 
-    if (twilioSucceeded) {
-      addLog('', `DELIVERED to ${c.name} via WhatsApp/SMS — Message confirmed`, 'log-text-success');
+    if (telegramSucceeded) {
+      addLog('', `${c.name}: Telegram hierarchy step queued`, 'log-text-success');
     } else {
-      addLog('', `NOT DELIVERED to ${c.name} via WhatsApp/SMS — backend dispatch failed or unavailable`, 'log-text-error');
+      addLog('', `NOT DELIVERED to ${c.name} — backend dispatch failed or unavailable`, 'log-text-error');
     }
   }
 
-  const sentCount = statuses.filter(s => s.twilio === 'sent' || s.telegram === 'sent').length;
-  addLog('', `TRANSMISSION COMPLETE — ${sentCount}/${ALERT_CONTACTS.length} authorities notified on at least one channel`, 'log-text-system');
+  const sentCount = statuses.filter(s => s.telegram === 'sent').length;
+  addLog('', `TRANSMISSION COMPLETE — Village step queued; Tehsil follows Village resolution`, 'log-text-system');
   addLog('', `Alert #${alertCount} logged. Timestamp: ${new Date().toLocaleString('en-IN')}`, 'log-text-info');
 
   addToAlertHistory(VILLAGE, SEVERITY);

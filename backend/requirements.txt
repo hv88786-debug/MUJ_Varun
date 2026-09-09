@@ -4,3 +4,4 @@ python-dotenv
 requests
 groq
 gunicorn
+python-telegram-bot>=20,<22
