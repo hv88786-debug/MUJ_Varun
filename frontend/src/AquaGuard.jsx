@@ -1345,7 +1345,7 @@ async function checkBackendHealth() {
   const text  = document.getElementById('backendStatusText');
   const hdr   = document.getElementById('headerBackendStatus');
   try {
-    const r = await fetch(`${BACKEND_URL}/health`, { method: 'GET', signal: AbortSignal.timeout(2000) });
+    const r = await fetch(`${BACKEND_URL}/health`, { method: 'GET', signal: AbortSignal.timeout(15000) });
     if (r.ok) {
       if (el)   { el.className = 'be-online'; }
       if (text) { text.textContent = 'Backend Online — Flask API Connected'; }
